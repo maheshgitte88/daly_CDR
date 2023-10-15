@@ -1,7 +1,7 @@
 // models/callData.js
 
 const { Sequelize, DataTypes } = require('sequelize');
-const sequelize = new Sequelize('dalycdr', 'root', 'root', {
+const sequelize = new Sequelize('dalycdr', 'root', 'YourRootPassword', {
   host: 'localhost',
   dialect: 'mysql',
 });

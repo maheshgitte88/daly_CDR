@@ -8,7 +8,7 @@ const port = 7000;
 app.use(cors())
 app.use(express.json());
 
-const sequelize = new Sequelize('dalycdr', 'root', 'root', {
+const sequelize = new Sequelize('dalycdr', 'root', 'YourRootPassword', {
   host: 'localhost',
   dialect: 'mysql',
   pool: {
@@ -82,13 +82,11 @@ app.get('/api/sum-users', async (req, res) => {
   try {
     // Get the optional date parameter from the request
     const selectedDate = req.query.date || null;
-    const selectedName = req.query.userFullName || null;
 
     // Fetch the data grouped by userFullName
     const callData = await CallData.findAll({
       attributes: ['userFullName', 'callStatus', 'talkDuration'],
       where: selectedDate ? { Date: selectedDate } : {},
-      where: selectedName ? {userFullName: selectedName}: {}
     });
 
     const groupedData = {};
