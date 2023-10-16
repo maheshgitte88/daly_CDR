@@ -8,14 +8,14 @@ const port = 7000;
 app.use(cors())
 app.use(express.json());
 
-const sequelize = new Sequelize('dalycdr', 'root', 'YourRootPassword', {
+const sequelize = new Sequelize('cdrreport', 'root', 'root', {
   host: 'localhost',
   dialect: 'mysql',
   pool: {
     max: 10, // Maximum number of connections in the pool
     min: 0,  // Minimum number of connections in the pool
-    acquire: 600000, // Maximum time (in milliseconds) that a connection can be acquired
-    idle: 600000    // Maximum time (in milliseconds) that a connection can be idle
+    acquire: 6000000, // Maximum time (in milliseconds) that a connection can be acquired
+    idle: 6000000    // Maximum time (in milliseconds) that a connection can be idle
   },
 });
 sequelize
@@ -530,6 +530,49 @@ function divideTime(time, divisor) {
 //     .finally(() => {
 //         sequelize.close();
 //     });
+
+app.get('/ct', async (req, res) => {
+  try {
+    // Query the database to get the desired data
+    const result = await CallData.findAll({
+      attributes: [
+        'date',
+        'callType',
+        [Sequelize.literal('SEC_TO_TIME(SUM(TIME_TO_SEC(talkDuration)))'), 'totalTalkDuration'],
+        [Sequelize.fn('COUNT', Sequelize.literal('DISTINCT CASE WHEN callStatus = "DISCONNECTED" THEN id END')), 'disconnectedCount'],
+        [Sequelize.fn('COUNT', Sequelize.literal('DISTINCT CASE WHEN callStatus = "CONNECTED" THEN id END')), 'connectedCount'],
+      ],
+      group: ['date', 'callType'],
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error querying the database: ', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
+app.get('/cw', async (req, res) => {
+  try {
+    // Query the database to get the desired data
+    const result = await CallData.findAll({
+      attributes: [
+        'date',
+        'campaign',
+        [Sequelize.literal('SEC_TO_TIME(SUM(TIME_TO_SEC(talkDuration)))'), 'totalTalkDuration'],
+        [Sequelize.fn('COUNT', Sequelize.literal('DISTINCT CASE WHEN callStatus = "DISCONNECTED" THEN id END')), 'disconnectedCount'],
+        [Sequelize.fn('COUNT', Sequelize.literal('DISTINCT CASE WHEN callStatus = "CONNECTED" THEN id END')), 'connectedCount'],
+      ],
+      group: ['date', 'campaign'],
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error querying the database: ', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 
 app.listen(port, () => {
