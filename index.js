@@ -28,35 +28,18 @@ sequelize
   });
 
 
-// app.get('/api/call-data', async (req, res) => {
-//   try {
-//     const callData = await CallData.findAll({
-//       attributes: ['userFullName', 'date', 'time', 'campaign', 'talkDuration', 'callType', 'callStatus'],
-//     });
-//     res.json(callData);
-//   } catch (error) {
-//     console.error('Error retrieving data:', error);
-//     res.status(500).json({ error: 'An error occurred while retrieving data.' });
-//   }
-// });
-
-
 app.get('/', (req, res) => {
   res.json('hello mahesh, how are you...')
 })
 
 app.get('/api/unique-dates', async (req, res) => {
   try {
-    // Fetch all unique dates from the CallData model
     const uniqueDates = await CallData.findAll({
       attributes: [
         [sequelize.fn('DISTINCT', sequelize.col('date')), 'date']
       ],
     });
-
-    // Extract the date values from the result
     const dateValues = uniqueDates.map((date) => date.get('date'));
-
     res.json(dateValues);
   } catch (error) {
     console.error('Error retrieving unique dates:', error);
@@ -66,8 +49,10 @@ app.get('/api/unique-dates', async (req, res) => {
 
 app.get('/api/all/call-data', async (req, res) => {
   try {
+    const selectedUserFullName = req.query.userFullName || null;
     const callData = await CallData.findAll({
       attributes: ['userFullName', 'date', 'campaign', 'callStatus', 'talkDuration'],
+      where: selectedUserFullName ? { userFullName: selectedUserFullName } : {},
     });
     res.json(callData);
   } catch (error) {
@@ -76,14 +61,32 @@ app.get('/api/all/call-data', async (req, res) => {
   }
 });
 
-// sum of connected dis calls & avg of connected calls
+app.get('/api/all/call-data/:userFullName', async (req, res) => {
+  try {
+    const userFullName = req.params.userFullName;
+    const status = req.query.status || 'CONNECTED';
+    const date = req.query.date || null;
+    
+    const whereCondition = { userFullName, callStatus: status };
+        if (date !== null) {
+      whereCondition.Date = date;
+    }
+    const callData = await CallData.findAll({
+      attributes: ['userFullName', 'date', 'campaign', 'callStatus', 'talkDuration'],
+      where: whereCondition,
+    });
+
+    res.json(callData);
+  } catch (error) {
+    console.error('Error retrieving data:', error);
+    res.status(500).json({ error: 'An error occurred while retrieving data.' });
+  }
+});
+
 
 app.get('/api/sum-users', async (req, res) => {
   try {
-    // Get the optional date parameter from the request
     const selectedDate = req.query.date || null;
-
-    // Fetch the data grouped by userFullName
     const callData = await CallData.findAll({
       attributes: ['userFullName', 'callStatus', 'talkDuration'],
       where: selectedDate ? { Date: selectedDate } : {},
@@ -111,13 +114,11 @@ app.get('/api/sum-users', async (req, res) => {
         groupedData[user].callStatusCounts[callStatus] += 1;
       }
 
-      // Only update data if the callStatus is CONNECTED
       if (callStatus === 'CONNECTED') {
         groupedData[user].talkDurationSum = addTime(groupedData[user].talkDurationSum, item.talkDuration);
       }
     }
 
-    // Calculate the average talkDuration for CONNECTED calls only
     for (const user in groupedData) {
       if (groupedData[user].callStatusCounts.CONNECTED > 0) {
         const totalTalkDuration = groupedData[user].talkDurationSum;
@@ -138,9 +139,7 @@ app.get('/api/sum-users', async (req, res) => {
 
 app.get('/api/sum-totals-by-callstatus', async (req, res) => {
   try {
-    // Get the optional date parameter from the request
     const selectedDate = req.query.date || null;
-    // Fetch the data grouped by callStatus
     const callData = await CallData.findAll({
       attributes: ['callStatus', 'talkDuration'],
       where: selectedDate ? { Date: selectedDate } : {},
@@ -185,9 +184,7 @@ app.get('/api/sum-totals-by-callstatus', async (req, res) => {
 
 app.get('/api/sum-users-connectedcalls', async (req, res) => {
   try {
-    // Get the optional date parameter from the request
     const selectedDate = req.query.date || null;
-    // Fetch the data grouped by userFullName
     const callData = await CallData.findAll({
       attributes: ['userFullName', 'callStatus', 'talkDuration'],
       where: selectedDate ? { Date: selectedDate } : {},
@@ -241,10 +238,7 @@ app.get('/api/sum-users-connectedcalls', async (req, res) => {
 
 app.get('/api/sum-totals-by-user', async (req, res) => {
   try {
-    // Get the optional date parameter from the request
     const selectedDate = req.query.date || null;
-
-    // Fetch the data grouped by userFullName and filtered by the selected date
     const callData = await CallData.findAll({
       attributes: ['userFullName', 'callStatus', 'talkDuration'],
       where: selectedDate ? { Date: selectedDate } : {},
@@ -357,10 +351,7 @@ app.get('/api/sum-totals-by-campaign', async (req, res) => {
 
 app.get('/api/sum-campaign-count-by-callType', async (req, res) => {
   try {
-    // Get the optional date parameter from the request
     const selectedDate = req.query.date || null;
-
-    // Fetch the data grouped by callType and filtered by the selected date
     const callData = await CallData.findAll({
       attributes: ['callType', 'campaign'],
       where: selectedDate ? { Date: selectedDate } : {},
@@ -384,8 +375,6 @@ app.get('/api/sum-campaign-count-by-callType', async (req, res) => {
       } else {
         groupedData[callType][campaign]++;
       }
-
-      // Count the number of unique campaigns for each callType
       if (!groupedData[callType].campaignCount) {
         groupedData[callType].campaignCount = 1;
       } else {
@@ -399,66 +388,6 @@ app.get('/api/sum-campaign-count-by-callType', async (req, res) => {
     res.status(500).json({ error: 'An error occurred while retrieving and processing data.' });
   }
 });
-
-
-
-// app.get('/api/sum-totals-by-callType', async (req, res) => {
-//   try {
-//     // Get the optional date parameter from the request
-//     const selectedDate = req.query.date || null;
-
-//     // Fetch the data grouped by callType and filtered by the selected date
-//     const callData = await CallData.findAll({
-//       attributes: ['callType', 'callStatus', 'talkDuration'],
-//       where: selectedDate ? { Date: selectedDate } : {},
-//     });
-
-//     const groupedData = {};
-
-//     for (const item of callData) {
-//       const callType = item.callType;
-//       const callStatus = item.callStatus;
-
-//       if (!groupedData[callType]) {
-//         groupedData[callType] = {
-//           callType,
-//           callStatusCounts: {
-//             CONNECTED: 0,
-//             DISCONNECTED: 0,
-//           },
-//           talkDurationSum: '0:00:00', // Initialize as '0:00:00'
-//         };
-//       }
-
-//       // Update the callStatus count for the callType based on the callStatus
-//       if (callStatus === 'CONNECTED' || callStatus === 'DISCONNECTED') {
-//         groupedData[callType].callStatusCounts[callStatus] += 1;
-//       }
-
-//       // Only update data if the callStatus is CONNECTED
-//       if (callStatus === 'CONNECTED') {
-//         groupedData[callType].talkDurationSum = addTime(groupedData[callType].talkDurationSum, item.talkDuration);
-//       }
-//     }
-
-//     // Calculate the average talkDuration for CONNECTED calls only
-//     for (const callType in groupedData) {
-//       if (groupedData[callType].callStatusCounts.CONNECTED > 0) {
-//         const totalTalkDuration = groupedData[callType].talkDurationSum;
-//         const totalCallCount = groupedData[callType].callStatusCounts.CONNECTED;
-//         const avgTalkDuration = divideTime(totalTalkDuration, totalCallCount);
-//         groupedData[callType].talkDurationAvg = avgTalkDuration;
-//       } else {
-//         groupedData[callType].talkDurationAvg = '0:00:00'; // Handle cases where there are no CONNECTED calls
-//       }
-//     }
-
-//     res.json(Object.values(groupedData));
-//   } catch (error) {
-//     console.error('Error retrieving and processing data:', error);
-//     res.status(500).json({ error: 'An error occurred while retrieving and processing data.' });
-//   }
-// });
 
 
 function addTime(time1, time2) {
